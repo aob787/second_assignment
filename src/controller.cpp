@@ -5,6 +5,7 @@
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
+int state= 0;
 
 // /base_pose_ground_truth
 // /base_scan
@@ -46,60 +47,72 @@ ros::Publisher pub;
 void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
 	ROS_INFO("-------------------"); // size == 24
+
 	// ROS_INFO("Size: %ld Laser Scanner subscriber@[%f, %f, %f]", // size == 24
 	// msg->ranges.size(), msg->range_max, msg->angle_max, msg->scan_time);
-	for(float range = 2; range > 0.4; range = range-0.1){
-		int jCCW = ((msg->ranges.size()-1)/2) + 5;
-		int jCW = ((msg->ranges.size()-1)/2) - 5;
-		for (int i = 0 ; i < 14; i++) {
-			jCW = jCW + (10 * i);
-			jCCW = jCCW + (10 * i);
-			float avgCW = (msg->ranges[jCW-5] + msg->ranges[jCW-4] + msg->ranges[jCW-3] + msg->ranges[jCW-2] + msg->ranges[jCW-1]
-										+ msg->ranges[jCW] + msg->ranges[jCW+1]+ msg->ranges[jCW+2] + msg->ranges[jCW+3] + msg->ranges[jCW+4])/10;
-			float avgCCW = (msg->ranges[jCCW-5] + msg->ranges[jCCW-4] + msg->ranges[jCCW-3] + msg->ranges[jCCW-2] + msg->ranges[jCCW-1]
-									+ msg->ranges[jCCW] + msg->ranges[jCCW+1]+ msg->ranges[jCCW+2] + msg->ranges[jCCW+3] + msg->ranges[jCCW+4])/10;
-			//ROS_INFO("for at %d range %f [%f --- %f]",i, range, avg_R, avg_L);
-			geometry_msgs::Twist msg;
-			if (i ==0 && avgCCW > range && avgCW > range){
-				ROS_INFO("Forward"); // size == 24
-				geometry_msgs::Twist msg;
-				msg.linear.x = 3.00;
-				msg.linear.y = 0;
-				msg.linear.z = 0;
-				msg.angular.x = 0;
-				msg.angular.y = 0;
-				msg.angular.z = 0;
-				pub.publish(msg);
-				range = 0;
-				break;
+	for(float range = 1.6; range > 0.7; range = range-0.1){
+		// float range = 1.5;
+		int j = ((msg->ranges.size()-1)/2);
+		float frontDist = 0;
+		float minDist = 100;
+		for (int i = j-30; i < j +61; i++){
+			frontDist = frontDist + msg->ranges[i];
+			if (msg->ranges[i] < minDist){
+				minDist = msg->ranges[i];
 			}
-			else if(avgCW > range){
-				ROS_INFO("Turn CW %d", i); // size == 24
+		}
+		frontDist = frontDist/ 60;
+		if (frontDist > range && minDist > 0.9){
+			ROS_INFO("Forward %f  ..M=%f", frontDist, minDist); // size == 24
+			geometry_msgs::Twist msg;
+			msg.linear.x = (0.8 * (minDist))+1;
+			msg.linear.y = 0;
+			msg.linear.z = 0;
+			msg.angular.x = 0;
+			msg.angular.y = 0;
+			msg.angular.z = 0;
+			pub.publish(msg);
+			range = 0;
+			break;
+		}
+		int ji = 20;
+		int size = ((msg->ranges.size()-1)/2)-22;
+		for (int i = 0 ; i < size; i++) {
+			ji = ji+3;
+			float avgCW = ( msg->ranges[size - ji - 1]
+										+ msg->ranges[size - ji] + msg->ranges[size - ji +1] )/3;
+			float avgCCW = ( msg->ranges[size + ji - 1]
+										+ msg->ranges[size + ji] + msg->ranges[size + ji +1] )/3;
+			//ROS_INFO("for at %d range %f [%f --- %f]",i, range, avg_R, avg_L);
+			if(avgCW > range){
 				geometry_msgs::Twist msg;
-				msg.linear.x = 0.02;
+				ROS_INFO("Turn CW-%d . %f ... %f", i ,avgCCW, avgCW); // size == 24
+				msg.linear.x = 0;
 				msg.linear.y = 0;
 				msg.linear.z = 0;
 				msg.angular.x = 0;
 				msg.angular.y = 0;
-				msg.angular.z = (-1.2*i)-2.3;
+				msg.angular.z = (-8.00*i)-9.00;
 				pub.publish(msg);
 				range = 0;
 				break;
 			// 	ROS_INFO("Publisher at %d",i); // size == 24
 			}
 			else if (avgCCW > range){
-				ROS_INFO("Turn CCW %d", i); // size == 24
-				msg.linear.x = 0.02;
+				geometry_msgs::Twist msg;
+				ROS_INFO("Turn CCW-%d %f ... %f", i,avgCCW, avgCW); // size == 24
+				msg.linear.x = 0;
 				msg.linear.y = 0;
 				msg.linear.z = 0;
 				msg.angular.x = 0;
 				msg.angular.y = 0;
-				msg.angular.z = (1.2*i)+2.3;
+				msg.angular.z = (8.00*i)+9.00;
 				pub.publish(msg);
 				range = 0;
 				break;
 			}
-		}
+			}
+
 	}
 	// geometry_msgs::Twist my_vel;
 	// my_vel.linear.x = 1.0;

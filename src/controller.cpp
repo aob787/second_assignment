@@ -1,11 +1,13 @@
 //roscore
 //rosrun stage_ros stageros $(rospack find second_assignment)/world/my_world.world
 //rosrun second_assignment controller_node
+//rosrun second_assignment ui_node
 //
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
-int state= 0;
+#include "second_assignment/speed_regulator.h"
+
 
 // /base_pose_ground_truth
 // /base_scan
@@ -43,7 +45,7 @@ int state= 0;
 //   float64 z
 
 ros::Publisher pub;
-
+float speed_reg = 1.00;
 void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
 	ROS_INFO("-------------------"); // size == 24
@@ -65,7 +67,7 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 		if (frontDist > range && minDist > 0.9){
 			ROS_INFO("Forward %f  ..M=%f", frontDist, minDist); // size == 24
 			geometry_msgs::Twist msg;
-			msg.linear.x = (0.8 * (minDist))+1;
+			msg.linear.x = (0.8 * (minDist))+1 * speed_reg;
 			msg.linear.y = 0;
 			msg.linear.z = 0;
 			msg.angular.x = 0;
@@ -92,7 +94,7 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 				msg.linear.z = 0;
 				msg.angular.x = 0;
 				msg.angular.y = 0;
-				msg.angular.z = (-8.00*i)-9.00;
+				msg.angular.z = (-8.00*i)-9.00 * speed_reg;
 				pub.publish(msg);
 				range = 0;
 				break;
@@ -106,19 +108,26 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 				msg.linear.z = 0;
 				msg.angular.x = 0;
 				msg.angular.y = 0;
-				msg.angular.z = (8.00*i)+9.00;
+				msg.angular.z = (8.00*i)+9.00 * speed_reg;
 				pub.publish(msg);
 				range = 0;
 				break;
 			}
-			}
+		}
 
 	}
-	// geometry_msgs::Twist my_vel;
-	// my_vel.linear.x = 1.0;
-	// // my_vel.angular.z = 1.0;
-	// pub.publish(my_vel);
+}
 
+bool speed_adj(second_assignment::speed_regulator::Request &req, second_assignment::speed_regulator::Response &res){
+	if (req.state_param == 1) {
+		speed_reg = speed_reg + 0.2;
+	}
+	else if (req.state_param == 2) {
+		if (speed_reg > 0.4)
+		speed_reg = speed_reg - 0.2;
+	}
+	res.speed_param = speed_reg;
+	return true;
 }
 
 int main (int argc, char **argv)
@@ -130,7 +139,7 @@ int main (int argc, char **argv)
 	ros::Subscriber sub = nh.subscribe("/base_scan", 1,turtleCallback);
 	// Define the subscriber to turtle's position
 	pub = nh.advertise<geometry_msgs::Twist> ("/cmd_vel", 1);
-
+	ros::ServiceServer service = nh.advertiseService("/speed_regulator", speed_adj);
 	ROS_INFO("GO");
 
 	// 		sleep(1);

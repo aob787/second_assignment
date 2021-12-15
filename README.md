@@ -1,4 +1,4 @@
-Second assignment - Research Track i
+Second assignment - Research Track 1
 ================================
 
 This respiratory was froked from https://github.com/CarmineD8/second_assignment

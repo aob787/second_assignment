@@ -50,21 +50,21 @@ void robotCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
 	// ROS_INFO("Size: %ld Laser Scanner subscriber@[%f, %f, %f]",
 	// msg->ranges.size(), msg->range_max, msg->angle_max, msg->scan_time); // just for debugging
-	for(float range = 1.6; range > 0.7; range = range-0.1){
+	for(float range = 1.6; range > 0.5; range = range-0.1){
 		// float range = 1.5;
 		int j = ((msg->ranges.size()-1)/2); // find the centre == front of robot
-		// float frontDist = 0;
+		float frontDist = 0;
 		float minDist = 100; //init the min distance in scope
 		// check the fron of robot
 		for (int i = j-30; i < j +61; i++){
-			// frontDist = frontDist + msg->ranges[i];
+			frontDist = frontDist + msg->ranges[i];
 			if (msg->ranges[i] < minDist){
 				minDist = msg->ranges[i];//assign the value of min if it less than previous one
 			}
 		}
-		// frontDist = frontDist/ 60;
-		if (minDist > range){ //0.9
-			ROS_INFO("Forward Min=%f", minDist);
+		frontDist = frontDist/ 60;
+		if (frontDist > range && minDist > range-0.2){
+			ROS_INFO("Forward %f  ..M=%f", frontDist, minDist);
 			geometry_msgs::Twist msg;
 			msg.linear.x = (0.8 * (minDist))+1 * speed_reg;
 			msg.linear.y = 0;
@@ -77,7 +77,7 @@ void robotCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 			break;
 		}
 		int ji = 20; // start from instant 20 of laser scanner
-		int size = ((msg->ranges.size()-1)/2)-22; //-22 because we ignore the middle
+		int size = ((msg->ranges.size()-1)/2)-20; //-22 because we ignore the middle
 		for (int i = 0 ; i < size; i++) {
 			ji = ji+3;
 			float avgCW = ( msg->ranges[size - ji - 1]

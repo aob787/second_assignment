@@ -2,22 +2,12 @@
 //rosrun stage_ros stageros $(rospack find second_assignment)/world/my_world.world
 //rosrun second_assignment controller_node
 //rosrun second_assignment ui_node
-//
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
 #include "sensor_msgs/LaserScan.h"
 #include "second_assignment/speed_regulator.h"
 
-
-// /base_pose_ground_truth
-// /base_scan
-// /clock
-// /cmd_vel
-// /odom
-// /rosout
-// /rosout_agg
-// /tf
-
+//list of each rosmsg and srv
 // ---------------------------------------------------------
 // rosmsg show sensor_msgs/LaserScan
 // std_msgs/Header header
@@ -44,28 +34,37 @@
 //   float64 y
 //   float64 z
 
-ros::Publisher pub;
-float speed_reg = 1.00;
-void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
+//rossrv second_assignment/speed_regulator
+// int32 state_param
+// ---
+// float32 speed_param
+
+
+ros::Publisher pub; //init Publisher
+float speed_reg = 1.00; //init speed_reg
+
+// This loop will exceute when recive the msg from laser scanner
+void robotCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
 	ROS_INFO("-------------------"); // size == 24
 
-	// ROS_INFO("Size: %ld Laser Scanner subscriber@[%f, %f, %f]", // size == 24
-	// msg->ranges.size(), msg->range_max, msg->angle_max, msg->scan_time);
+	// ROS_INFO("Size: %ld Laser Scanner subscriber@[%f, %f, %f]",
+	// msg->ranges.size(), msg->range_max, msg->angle_max, msg->scan_time); // just for debugging
 	for(float range = 1.6; range > 0.7; range = range-0.1){
 		// float range = 1.5;
-		int j = ((msg->ranges.size()-1)/2);
-		float frontDist = 0;
-		float minDist = 100;
+		int j = ((msg->ranges.size()-1)/2); // find the centre == front of robot
+		// float frontDist = 0;
+		float minDist = 100; //init the min distance in scope
+		// check the fron of robot
 		for (int i = j-30; i < j +61; i++){
-			frontDist = frontDist + msg->ranges[i];
+			// frontDist = frontDist + msg->ranges[i];
 			if (msg->ranges[i] < minDist){
-				minDist = msg->ranges[i];
+				minDist = msg->ranges[i];//assign the value of min if it less than previous one
 			}
 		}
-		frontDist = frontDist/ 60;
-		if (frontDist > range && minDist > 0.9){
-			ROS_INFO("Forward %f  ..M=%f", frontDist, minDist); // size == 24
+		// frontDist = frontDist/ 60;
+		if (minDist > range){ //0.9
+			ROS_INFO("Forward Min=%f", minDist);
 			geometry_msgs::Twist msg;
 			msg.linear.x = (0.8 * (minDist))+1 * speed_reg;
 			msg.linear.y = 0;
@@ -77,8 +76,8 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 			range = 0;
 			break;
 		}
-		int ji = 20;
-		int size = ((msg->ranges.size()-1)/2)-22;
+		int ji = 20; // start from instant 20 of laser scanner
+		int size = ((msg->ranges.size()-1)/2)-22; //-22 because we ignore the middle
 		for (int i = 0 ; i < size; i++) {
 			ji = ji+3;
 			float avgCW = ( msg->ranges[size - ji - 1]
@@ -88,7 +87,7 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 			//ROS_INFO("for at %d range %f [%f --- %f]",i, range, avg_R, avg_L);
 			if(avgCW > range){
 				geometry_msgs::Twist msg;
-				ROS_INFO("Turn CW-%d . %f ... %f", i ,avgCCW, avgCW); // size == 24
+				ROS_INFO("Turn CW-%d . %f ... %f", i ,avgCCW, avgCW);
 				msg.linear.x = 0;
 				msg.linear.y = 0;
 				msg.linear.z = 0;
@@ -98,11 +97,11 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 				pub.publish(msg);
 				range = 0;
 				break;
-			// 	ROS_INFO("Publisher at %d",i); // size == 24
+			// 	ROS_INFO("Publisher at %d",i);
 			}
 			else if (avgCCW > range){
 				geometry_msgs::Twist msg;
-				ROS_INFO("Turn CCW-%d %f ... %f", i,avgCCW, avgCW); // size == 24
+				ROS_INFO("Turn CCW-%d %f ... %f", i,avgCCW, avgCW);
 				msg.linear.x = 0;
 				msg.linear.y = 0;
 				msg.linear.z = 0;
@@ -118,6 +117,7 @@ void turtleCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 	}
 }
 
+// this function will exceute when UI call the service
 bool speed_adj(second_assignment::speed_regulator::Request &req, second_assignment::speed_regulator::Response &res){
 	if (req.state_param == 1) {
 		speed_reg = speed_reg + 0.2;
@@ -135,27 +135,10 @@ int main (int argc, char **argv)
 // Initialize the node, setup the NodeHandle for handling the communication with the ROS //system
 	ros::init(argc, argv, "as2Controller");
 	ros::NodeHandle nh;
-	//ros::Subscriber sub = nh.subscribe("turtle1/pose", 1,turtleCallback);
-	ros::Subscriber sub = nh.subscribe("/base_scan", 1,turtleCallback);
-	// Define the subscriber to turtle's position
+	ros::Subscriber sub = nh.subscribe("/base_scan", 1,robotCallback);
 	pub = nh.advertise<geometry_msgs::Twist> ("/cmd_vel", 1);
 	ros::ServiceServer service = nh.advertiseService("/speed_regulator", speed_adj);
 	ROS_INFO("GO");
-
-	// 		sleep(1);
-	// }
-
-	// pub2 =nh.advertise<geometry_msgs::Vel> ;
-	// ros::ServiceClient client1 = nh.serviceClient<turtlesim::Spawn>("/spawn");
-	// turtlesim::Spawn srv1;
-	// srv1.request.x= 1.0;
-	// srv1.request.y= 1.0;
-	// srv1.request.theta= 0.0;
-	// srv1.request.name = "rt1_turtle";
-	//
-	// client1.waitForExistence();
-	// client1.call(srv1);
-
 	ros::spin();
 	return 0;
 }

@@ -59,8 +59,7 @@ call-back function for speed adjust
 ui.cpp
 ```
 main(){
-  init Publisher
-  init service
+  init service(speed_adj, reset_pos)
   While(true){
     take user user input
     switch case(user input)

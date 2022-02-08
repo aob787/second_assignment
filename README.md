@@ -48,6 +48,7 @@ call-back function for laser scanner
           if cw is clear (avgDist > range of detection)
             turn right (speed*speed multiplier)
           else if ccw is clear (avgDist > range of detection)
+            turn left (speed*speed multiplier)
     }
 call-back function for speed adjust
   if sig == increase speed
